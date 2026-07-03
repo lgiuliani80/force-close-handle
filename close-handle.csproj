@@ -6,6 +6,13 @@
     <RootNamespace>close_handle</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="pippo.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

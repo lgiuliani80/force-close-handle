@@ -1,16 +1,26 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Collections.Generic;
 
 class Program
 {
     static void Main()
     {
-        using var fs = File.Open("pippo.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        IntPtr hFile = CreateFile(
+            "pippo.txt",
+            GENERIC_READ | GENERIC_WRITE,
+            0, // No sharing
+            IntPtr.Zero,
+            OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            IntPtr.Zero);
+
+        if (hFile == INVALID_HANDLE_VALUE)
+        {
+            Console.WriteLine($"CreateFile failed: {Marshal.GetLastWin32Error()}");
+            return;
+        }
 
         Console.WriteLine($"Size of SYSTEM_HANDLE: {Marshal.SizeOf<SYSTEM_HANDLE>()} bytes");
         Console.WriteLine($"Current Process ID: {Process.GetCurrentProcess().Id}");
@@ -223,10 +233,10 @@ class Program
                 }
 
                 // Legge la struttura SYSTEM_HANDLE_INFORMATION
-                long handleCount = Marshal.ReadInt64(infoPtr);
-                IntPtr handlePtr = new IntPtr(infoPtr.ToInt64() + sizeof(long));
+                uint handleCount = unchecked((uint)Marshal.ReadInt32(infoPtr));
+                IntPtr handlePtr = new IntPtr(infoPtr.ToInt64() + IntPtr.Size);
 
-                for (long i = 0; i < handleCount; i++)
+                for (uint i = 0; i < handleCount; i++)
                 {
                     var handleStruct = Marshal.PtrToStructure<SYSTEM_HANDLE>(handlePtr);
                     //Console.WriteLine($"ProcessId: {handleStruct.ProcessId}, Handle: {handleStruct.Handle}, Type: {handleStruct.ObjectTypeIndex}");
@@ -392,4 +402,20 @@ class Program
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateFile(
+        string lpFileName,
+        uint dwDesiredAccess,
+        uint dwShareMode,
+        IntPtr lpSecurityAttributes,
+        uint dwCreationDisposition,
+        uint dwFlagsAndAttributes,
+        IntPtr hTemplateFile);
+
+    private const uint GENERIC_READ = 0x80000000;
+    private const uint GENERIC_WRITE = 0x40000000;
+    private const uint OPEN_ALWAYS = 4;
+    private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+    private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
 }
