@@ -24,6 +24,7 @@ class Program
 
         Console.WriteLine($"Size of SYSTEM_HANDLE: {Marshal.SizeOf<SYSTEM_HANDLE>()} bytes");
         Console.WriteLine($"Current Process ID: {Process.GetCurrentProcess().Id}");
+        Console.WriteLine($"Handle of 'pippo.txt': {hFile}");
 
         Thread.Sleep(2000); // Attende un secondo per assicurarsi che il file sia aperto
 
@@ -100,7 +101,7 @@ class Program
             var pathParts = new List<string>();
 
             // Estrai tutte le parti del percorso
-            DirectoryInfo dirInfo = new DirectoryInfo(currentPath).Parent;
+            DirectoryInfo? dirInfo = new DirectoryInfo(currentPath).Parent;
             pathParts.Add(Path.GetFileName(currentPath));
 
             while (dirInfo != null)
@@ -110,7 +111,7 @@ class Program
             }
 
             // Se è un percorso assoluto, aggiungi il root
-            string root = Path.GetPathRoot(currentPath);
+            string? root = Path.GetPathRoot(currentPath);
             if (!string.IsNullOrEmpty(root) && pathParts[0] != root.TrimEnd(Path.DirectorySeparatorChar))
             {
                 pathParts.Insert(0, root.TrimEnd(Path.DirectorySeparatorChar));
@@ -258,7 +259,7 @@ class Program
                 Marshal.FreeHGlobal(infoPtr);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             throw;
         }
@@ -320,10 +321,16 @@ class Program
             {
                 // Alloca buffer per il nome del file
                 StringBuilder sb = new StringBuilder(260);
-                uint size = (uint)sb.Capacity;
+                uint result = GetFinalPathNameByHandle(duplicateHandle, sb, (uint)sb.Capacity, FILE_NAME_NORMALIZED);
 
-                if (GetFinalPathNameByHandle(duplicateHandle, sb, size, FILE_NAME_NORMALIZED) != 0)
+                if (result != 0)
                 {
+                    if (result > sb.Capacity)
+                    {
+                        sb.Capacity = (int)result;
+                        result = GetFinalPathNameByHandle(duplicateHandle, sb, (uint)sb.Capacity, FILE_NAME_NORMALIZED);
+                    }
+
                     string path = sb.ToString();
                     // Rimuove il prefisso "\\?\" se presente
                     if (path.StartsWith(@"\\?\"))
